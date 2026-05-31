@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const BASE_DOMAIN = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "yeah-events.com";
-
 /**
  * Resolve the city slug from the incoming request hostname.
  *
  * Production:  yeahcharlotte.com  →  "charlotte"
- *              yeah-charlotte.com  →  "charlotte"
- *              charlotte.yeah-events.com  →  "charlotte"
+ *              yeahatlanta.com    →  "atlanta"
  *
- * Local dev:   Reads the `x-city-slug` header so you can test any city by
- *              passing `-H "x-city-slug: charlotte"` to your requests, or
- *              set it in next.config rewrites.
+ * Local dev:   Falls back to the x-city-slug header so you can test any
+ *              city with: -H "x-city-slug: charlotte"
  */
 function resolveCitySlug(request: NextRequest): string | null {
   const host = request.headers.get("host") ?? "";
@@ -22,17 +18,9 @@ function resolveCitySlug(request: NextRequest): string | null {
     return request.headers.get("x-city-slug") ?? "charlotte";
   }
 
-  // Pattern: yeahCITY.com  e.g. yeahcharlotte.com
-  const yeahPrefix = host.match(/^yeah([a-z]+)\.com/);
-  if (yeahPrefix) return yeahPrefix[1];
-
-  // Pattern: yeah-CITY.com  e.g. yeah-charlotte.com
-  const yeahDash = host.match(/^yeah-([a-z-]+)\.com/);
-  if (yeahDash) return yeahDash[1].replace(/-/g, "");
-
-  // Pattern: CITY.yeah-events.com subdomain
-  const subdomain = host.replace(`.${BASE_DOMAIN}`, "");
-  if (subdomain && subdomain !== host && subdomain !== "www") return subdomain;
+  // yeahCITY.com → "city"
+  const match = host.match(/^yeah([a-z]+)\.com/);
+  if (match) return match[1];
 
   return null;
 }
