@@ -44,6 +44,17 @@ async function handler(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  try {
+    return await innerHandler(request);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[scrape-events] Unhandled error:", err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function innerHandler(request: NextRequest) {
+
   const sourceIdParam = request.nextUrl.searchParams.get("sourceId");
 
   // --- Fan-out mode: no sourceId — dispatch one request per source ---
