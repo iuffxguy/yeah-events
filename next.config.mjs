@@ -5,8 +5,10 @@ const nextConfig = {
       { protocol: "https", hostname: "**" },
     ],
   },
-  // Required for Playwright in API routes
-  serverExternalPackages: ["playwright", "playwright-core"],
+  experimental: {
+    // Required for Playwright in API routes (Next.js 14 key)
+    serverComponentsExternalPackages: ["playwright", "playwright-core"],
+  },
 };
 
 export default nextConfig;

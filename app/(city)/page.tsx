@@ -73,7 +73,7 @@ export default async function EventsPage({
       : results;
 
   // Collect unique themes from results for the filter bar
-  const allThemes = [...new Set(results.flatMap((e) => e.themes))].sort();
+  const allThemes = Array.from(new Set(results.flatMap((e) => e.themes))).sort();
 
   return (
     <div className="space-y-6 animate-fade-in">
