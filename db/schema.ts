@@ -34,17 +34,23 @@ export const neighborhoods = pgTable("neighborhoods", {
 // ---------------------------------------------------------------------------
 // event_sources
 // ---------------------------------------------------------------------------
-export const eventSources = pgTable("event_sources", {
-  id: serial("id").primaryKey(),
-  cityId: integer("city_id")
-    .notNull()
-    .references(() => cities.id, { onDelete: "cascade" }),
-  url: text("url").notNull(),
-  sourceType: text("source_type").notNull(), // "website" | "api" | "rss"
-  active: boolean("active").notNull().default(true),
-  lastChecked: timestamp("last_checked"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const eventSources = pgTable(
+  "event_sources",
+  {
+    id: serial("id").primaryKey(),
+    cityId: integer("city_id")
+      .notNull()
+      .references(() => cities.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    sourceType: text("source_type").notNull(), // "website" | "api" | "rss"
+    active: boolean("active").notNull().default(true),
+    lastChecked: timestamp("last_checked"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueUrl: uniqueIndex("event_sources_url_idx").on(table.url),
+  })
+);
 
 // ---------------------------------------------------------------------------
 // events
