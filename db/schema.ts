@@ -5,7 +5,7 @@ import {
   boolean,
   timestamp,
   integer,
-  date,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // ---------------------------------------------------------------------------
@@ -71,10 +71,36 @@ export const events = pgTable("events", {
   isKidFriendly: boolean("is_kid_friendly").notNull().default(false),
   themes: text("themes").array(),
   isMajor: boolean("is_major").notNull().default(false),
+  // "low" = 1 source, "medium" = 2-3 sources, "high" = 4+ sources
+  confidence: text("confidence").notNull().default("low"),
+  mentionCount: integer("mention_count").notNull().default(1),
   imageUrl: text("image_url"),
   eventUrl: text("event_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// ---------------------------------------------------------------------------
+// event_mentions — tracks which sources have mentioned each event
+// ---------------------------------------------------------------------------
+export const eventMentions = pgTable(
+  "event_mentions",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    sourceId: integer("source_id")
+      .notNull()
+      .references(() => eventSources.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueEventSource: uniqueIndex("event_mentions_event_source_idx").on(
+      table.eventId,
+      table.sourceId
+    ),
+  })
+);
 
 // ---------------------------------------------------------------------------
 // Type exports
@@ -90,3 +116,14 @@ export type NewEventSource = typeof eventSources.$inferInsert;
 
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
+
+export type EventMention = typeof eventMentions.$inferSelect;
+export type NewEventMention = typeof eventMentions.$inferInsert;
+
+export type Confidence = "low" | "medium" | "high";
+
+export function mentionCountToConfidence(count: number): Confidence {
+  if (count >= 4) return "high";
+  if (count >= 2) return "medium";
+  return "low";
+}

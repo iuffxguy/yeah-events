@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, eventSources, events, cities, neighborhoods } from "@/db";
+import { db, eventSources, cities, neighborhoods } from "@/db";
 import { eq } from "drizzle-orm";
 import { askForJson, systemPrompt } from "@/lib/anthropic";
 import { scrapePage } from "@/lib/scraper";
 import { buildClaudePayload } from "@/lib/extractor";
+import { upsertEvent } from "@/lib/dedup";
 import { addDays, startOfDay } from "date-fns";
 
 // Vercel Cron: every Tuesday at 4am UTC
@@ -127,6 +128,7 @@ ${payload}`
   );
 
   let eventsInserted = 0;
+  let eventsMerged = 0;
   for (const e of parsed) {
     try {
       const hood = hoods.find(
@@ -135,30 +137,28 @@ ${payload}`
           h.slug === e.neighborhood?.toLowerCase().replace(/\s+/g, "-")
       );
 
-      await db
-        .insert(events)
-        .values({
-          cityId: source.cityId,
-          sourceId: source.id,
-          title: e.title,
-          description: e.description,
-          startDate: new Date(e.start_date),
-          endDate: e.end_date ? new Date(e.end_date) : null,
-          venueName: e.venue_name ?? null,
-          address: e.address ?? null,
-          neighborhoodId: hood?.id ?? null,
-          isFree: e.is_free,
-          isKidFriendly: e.is_kid_friendly,
-          themes: e.themes,
-          isMajor: false,
-          imageUrl: e.image_url ?? null,
-          eventUrl: e.event_url ?? null,
-        })
-        .onConflictDoNothing();
+      const result = await upsertEvent({
+        cityId: source.cityId,
+        sourceId: source.id,
+        title: e.title,
+        description: e.description,
+        startDate: new Date(e.start_date),
+        endDate: e.end_date ? new Date(e.end_date) : null,
+        venueName: e.venue_name ?? null,
+        address: e.address ?? null,
+        neighborhoodId: hood?.id ?? null,
+        isFree: e.is_free,
+        isKidFriendly: e.is_kid_friendly,
+        themes: e.themes,
+        isMajor: false,
+        imageUrl: e.image_url ?? null,
+        eventUrl: e.event_url ?? null,
+      });
 
-      eventsInserted++;
+      if (result === "inserted") eventsInserted++;
+      else eventsMerged++;
     } catch {
-      // ignore per-event insert errors
+      // ignore per-event errors
     }
   }
 
@@ -167,5 +167,5 @@ ${payload}`
     .set({ lastChecked: new Date() })
     .where(eq(eventSources.id, source.id));
 
-  return NextResponse.json({ ok: true, sourceId: source.id, eventsInserted });
+  return NextResponse.json({ ok: true, sourceId: source.id, eventsInserted, eventsMerged });
 }

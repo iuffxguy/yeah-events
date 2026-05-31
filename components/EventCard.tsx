@@ -55,6 +55,20 @@ export default function EventCard({ event }: { event: Event }) {
             </span>
           )}
         </div>
+
+        {/* Confidence badge — top right */}
+        <div className="absolute top-2 right-2">
+          {event.confidence === "high" && (
+            <span className="bg-yeah-yellow text-yeah-navy text-xs font-bold px-2 py-0.5 rounded-full" title={`${event.mentionCount} sources`}>
+              &#9733;&#9733;&#9733;
+            </span>
+          )}
+          {event.confidence === "medium" && (
+            <span className="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full" title={`${event.mentionCount} sources`}>
+              &#9733;&#9733;
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Body */}
