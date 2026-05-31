@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap");
+
+:root {
+  --font-display: "Syne", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+}
+
+body {
+  @apply bg-yeah-navy text-white font-body antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-yeah-ink;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-yeah-muted rounded-full;
+}
+
+/* Focus ring */
+*:focus-visible {
+  @apply outline-2 outline-offset-2 outline-yeah-yellow;
+}
+
+/* Theme pill */
+.theme-pill {
+  @apply inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold tracking-wide uppercase;
+}
