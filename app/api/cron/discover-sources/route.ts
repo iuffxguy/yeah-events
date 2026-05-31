@@ -12,6 +12,29 @@ type DiscoveredSource = {
   notes: string;
 };
 
+/**
+ * Verify a URL is reachable before saving it.
+ * Returns true only on 2xx responses. Treats 403/405 as blocked (not valid
+ * for scraping). Times out after 8s to stay within function limits.
+ */
+async function isSourceReachable(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      method: "HEAD",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; YeahEventsBot/1.0; +https://yeah-events.com/bot)",
+      },
+      signal: AbortSignal.timeout(8_000),
+      redirect: "follow",
+    });
+    // Accept 2xx and 3xx final redirects; reject 4xx/5xx
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 function verifyCronSecret(request: NextRequest): boolean {
   const auth = request.headers.get("authorization");
   return auth === `Bearer ${process.env.CRON_SECRET}`;
@@ -59,9 +82,16 @@ Return a JSON array with objects containing:
 Only include real, publicly accessible URLs. No paywalls.`
       );
 
-      // Upsert sources — skip duplicates by URL
+      // Validate then upsert sources
       let added = 0;
+      let rejected = 0;
       for (const source of discovered) {
+        const reachable = await isSourceReachable(source.url);
+        if (!reachable) {
+          console.log(`[discover-sources] rejected unreachable: ${source.url}`);
+          rejected++;
+          continue;
+        }
         try {
           await db
             .insert(eventSources)
@@ -79,7 +109,7 @@ Only include real, publicly accessible URLs. No paywalls.`
       }
 
       results[city.slug] = added;
-      console.log(`[discover-sources] ${city.name}: ${added} new sources`);
+      console.log(`[discover-sources] ${city.name}: ${added} added, ${rejected} rejected`);
     } catch (err) {
       console.error(`[discover-sources] Failed for ${city.name}:`, err);
       results[city.slug] = -1;
