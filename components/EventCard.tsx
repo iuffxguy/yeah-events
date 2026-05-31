@@ -32,11 +32,11 @@ export default function EventCard({ event }: { event: Event }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-4xl text-white/10 select-none">
-            {event.themes[0] === "music"
+            {(event.themes ?? [])[0] === "music"
               ? "♪"
-              : event.themes[0] === "food"
+              : (event.themes ?? [])[0] === "food"
               ? "🍽"
-              : event.themes[0] === "art"
+              : (event.themes ?? [])[0] === "art"
               ? "🎨"
               : "✦"}
           </div>
@@ -75,9 +75,9 @@ export default function EventCard({ event }: { event: Event }) {
         )}
 
         {/* Themes */}
-        {event.themes.length > 0 && (
+        {(event.themes ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1 pt-1">
-            {event.themes.slice(0, 3).map((theme) => (
+            {(event.themes ?? []).slice(0, 3).map((theme) => (
               <span
                 key={theme}
                 className={clsx(

@@ -69,7 +69,7 @@ export const events = pgTable("events", {
   ),
   isFree: boolean("is_free").notNull().default(false),
   isKidFriendly: boolean("is_kid_friendly").notNull().default(false),
-  themes: text("themes").array().notNull().default([]),
+  themes: text("themes").array(),
   isMajor: boolean("is_major").notNull().default(false),
   imageUrl: text("image_url"),
   eventUrl: text("event_url"),

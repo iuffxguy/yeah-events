@@ -80,7 +80,7 @@ function MajorEventCard({ event }: { event: Event }) {
               KIDS
             </span>
           )}
-          {event.themes.slice(0, 2).map((t) => (
+          {(event.themes ?? []).slice(0, 2).map((t) => (
             <span
               key={t}
               className="bg-white/10 text-white/60 text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"

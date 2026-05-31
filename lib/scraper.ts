@@ -1,4 +1,3 @@
-import { chromium, type Page } from "playwright";
 import { extractEventContent, type ExtractResult } from "./extractor";
 
 export type ScrapeResult = {
@@ -10,34 +9,29 @@ export type ScrapeResult = {
 };
 
 /**
- * Launch a headless Chromium instance, navigate to `url`, fetch the HTML,
- * then run Cheerio extraction to strip nav/footer/ads before returning.
- *
- * Note: Vercel Serverless Functions have a 50 MB limit. For production
- * scraping you should use a dedicated scraping service (e.g. Browserless,
- * ScrapingBee) or run Playwright in a separate Vercel Edge Function / AWS
- * Lambda with a custom layer. This stub works in local dev and on machines
- * with Playwright installed.
+ * Fetch a URL with a plain HTTP request and run Cheerio extraction.
+ * Works on Vercel serverless functions — no browser required.
+ * For JS-heavy SPAs that need a real browser, swap this out for
+ * Browserless or a dedicated scraping service.
  */
 export async function scrapePage(url: string): Promise<ScrapeResult> {
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    userAgent:
-      "Mozilla/5.0 (compatible; YeahEventsBot/1.0; +https://yeah-events.com/bot)",
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (compatible; YeahEventsBot/1.0; +https://yeah-events.com/bot)",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.5",
+    },
+    signal: AbortSignal.timeout(20_000),
   });
 
-  let html = "";
-
-  try {
-    const page: Page = await context.newPage();
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
-    await page.waitForTimeout(1500); // allow JS to settle
-    html = await page.content();
-  } finally {
-    await browser.close();
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} fetching ${url}`);
   }
 
+  const html = await response.text();
   const extracted = extractEventContent(html);
+
   console.log(
     `[scraper] ${url} — raw ${Math.round(extracted.rawLength / 1024)}KB → ` +
     `extracted ${extracted.content.length} chars, ${extracted.jsonLd.length} JSON-LD items`
