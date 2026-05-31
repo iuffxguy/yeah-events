@@ -44,35 +44,62 @@ async function handler(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const sourceIdParam = request.nextUrl.searchParams.get("sourceId");
+
+  // --- Fan-out mode: no sourceId — dispatch one request per source ---
+  if (!sourceIdParam) {
+    const activeSources = await db.query.eventSources.findMany({
+      where: eq(eventSources.active, true),
+    });
+
+    const baseUrl = `https://${request.headers.get("host")}`;
+    const dispatched: number[] = [];
+
+    for (const source of activeSources) {
+      fetch(`${baseUrl}/api/cron/scrape-events?sourceId=${source.id}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.CRON_SECRET}`,
+        },
+      }).catch((err) =>
+        console.error(`[scrape-events] dispatch error for source ${source.id}:`, err)
+      );
+      dispatched.push(source.id);
+    }
+
+    return NextResponse.json({ ok: true, dispatched });
+  }
+
+  // --- Single-source mode: scrape one source and insert events ---
   const now = startOfDay(new Date());
   const windowEnd = addDays(now, 7);
 
-  const activeSources = await db.query.eventSources.findMany({
-    where: eq(eventSources.active, true),
-    with: { city: true } as Record<string, unknown>,
+  const source = await db.query.eventSources.findFirst({
+    where: eq(eventSources.id, Number(sourceIdParam)),
+  });
+  if (!source) {
+    return NextResponse.json({ error: "Source not found" }, { status: 404 });
+  }
+
+  const cityRecord = await db.query.cities.findFirst({
+    where: eq(cities.id, source.cityId),
+  });
+  if (!cityRecord) {
+    return NextResponse.json({ error: "City not found" }, { status: 404 });
+  }
+
+  const hoods = await db.query.neighborhoods.findMany({
+    where: eq(neighborhoods.cityId, source.cityId),
   });
 
-  const stats = { scraped: 0, eventsInserted: 0, errors: 0 };
+  const { extracted } = await scrapePage(source.url);
+  const payload = buildClaudePayload(extracted);
 
-  for (const source of activeSources) {
-    try {
-      const cityRecord = await db.query.cities.findFirst({
-        where: eq(cities.id, source.cityId),
-      });
-      if (!cityRecord) continue;
-
-      const hoods = await db.query.neighborhoods.findMany({
-        where: eq(neighborhoods.cityId, source.cityId),
-      });
-
-      const { extracted } = await scrapePage(source.url);
-      const payload = buildClaudePayload(extracted);
-
-      const parsed = await askForJson<ParsedEvent[]>(
-        systemPrompt(
-          "an event data extraction specialist who reads structured and plain-text event data and returns structured JSON"
-        ),
-        `Extract all events happening between ${now.toISOString()} and ${windowEnd.toISOString()}.
+  const parsed = await askForJson<ParsedEvent[]>(
+    systemPrompt(
+      "an event data extraction specialist who reads structured and plain-text event data and returns structured JSON"
+    ),
+    `Extract all events happening between ${now.toISOString()} and ${windowEnd.toISOString()}.
 City: ${cityRecord.name}
 Known neighborhoods: ${hoods.map((h) => h.name).join(", ")}
 
@@ -86,56 +113,48 @@ For each event return:
 Return a JSON array. If no events found, return [].
 
 ${payload}`
+  );
+
+  let eventsInserted = 0;
+  for (const e of parsed) {
+    try {
+      const hood = hoods.find(
+        (h) =>
+          h.name.toLowerCase() === e.neighborhood?.toLowerCase() ||
+          h.slug === e.neighborhood?.toLowerCase().replace(/\s+/g, "-")
       );
 
-      // Insert events
-      for (const e of parsed) {
-        try {
-          const hood = hoods.find(
-            (h) =>
-              h.name.toLowerCase() === e.neighborhood?.toLowerCase() ||
-              h.slug === e.neighborhood?.toLowerCase().replace(/\s+/g, "-")
-          );
-
-          await db
-            .insert(events)
-            .values({
-              cityId: source.cityId,
-              sourceId: source.id,
-              title: e.title,
-              description: e.description,
-              startDate: new Date(e.start_date),
-              endDate: e.end_date ? new Date(e.end_date) : null,
-              venueName: e.venue_name ?? null,
-              address: e.address ?? null,
-              neighborhoodId: hood?.id ?? null,
-              isFree: e.is_free,
-              isKidFriendly: e.is_kid_friendly,
-              themes: e.themes,
-              isMajor: false,
-              imageUrl: e.image_url ?? null,
-              eventUrl: e.event_url ?? null,
-            })
-            .onConflictDoNothing();
-
-          stats.eventsInserted++;
-        } catch {
-          // ignore per-event insert errors
-        }
-      }
-
-      // Update last_checked
       await db
-        .update(eventSources)
-        .set({ lastChecked: new Date() })
-        .where(eq(eventSources.id, source.id));
+        .insert(events)
+        .values({
+          cityId: source.cityId,
+          sourceId: source.id,
+          title: e.title,
+          description: e.description,
+          startDate: new Date(e.start_date),
+          endDate: e.end_date ? new Date(e.end_date) : null,
+          venueName: e.venue_name ?? null,
+          address: e.address ?? null,
+          neighborhoodId: hood?.id ?? null,
+          isFree: e.is_free,
+          isKidFriendly: e.is_kid_friendly,
+          themes: e.themes,
+          isMajor: false,
+          imageUrl: e.image_url ?? null,
+          eventUrl: e.event_url ?? null,
+        })
+        .onConflictDoNothing();
 
-      stats.scraped++;
-    } catch (err) {
-      console.error(`[scrape-events] Error on source ${source.url}:`, err);
-      stats.errors++;
+      eventsInserted++;
+    } catch {
+      // ignore per-event insert errors
     }
   }
 
-  return NextResponse.json({ ok: true, stats });
+  await db
+    .update(eventSources)
+    .set({ lastChecked: new Date() })
+    .where(eq(eventSources.id, source.id));
+
+  return NextResponse.json({ ok: true, sourceId: source.id, eventsInserted });
 }
