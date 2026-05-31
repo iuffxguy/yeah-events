@@ -93,15 +93,18 @@ export function extractEventContent(html: string): ExtractResult {
   $(BOILERPLATE_SELECTORS).remove();
 
   // --- 3. Find the best content region ---
-  let $root = $("body");
+  // Use a CSS selector string so $root stays typed as Cheerio<AnyNode>
+  let contentSelector = "body";
 
   for (const selector of CONTENT_CANDIDATES) {
     const $candidate = $(selector).first();
     if ($candidate.length && $candidate.text().trim().length > MIN_CONTENT_LENGTH) {
-      $root = $candidate as ReturnType<typeof $>;
+      contentSelector = selector;
       break;
     }
   }
+
+  const $root = $(contentSelector);
 
   // --- 4. Extract and clean text ---
   const rawText = $root
