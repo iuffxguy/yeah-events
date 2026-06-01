@@ -21,6 +21,12 @@ html.light {
   --yeah-ink:  255 255 255;   /* #FFFFFF */
   --yeah-fg:   13 15 26;      /* #0D0F1A dark text */
   --yeah-line: 0 0 0;         /* black borders */
+  --yeah-yellow-accent: #B8860B; /* darker gold for readable text on light bg */
+}
+
+/* In light mode, yellow text (dates, labels) needs darker contrast */
+html.light .text-yeah-yellow {
+  color: #B8860B;
 }
 
 body {

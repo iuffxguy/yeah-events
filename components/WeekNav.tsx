@@ -26,7 +26,7 @@ export default function WeekNav({ weekStart, isPast }: { weekStart: Date; isPast
   return (
     <div className="flex items-center justify-between">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-display font-bold text-white">
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-yeah-fg">
           {!isPast ? (
             <>
               What&apos;s{" "}
@@ -46,7 +46,7 @@ export default function WeekNav({ weekStart, isPast }: { weekStart: Date; isPast
         {/* Back arrow — always visible so you can browse past weeks */}
         <button
           onClick={() => navigate(prevWeek)}
-          className="p-2 rounded-xl bg-yeah-ink border border-white/10 hover:border-yeah-yellow/50 hover:text-yeah-yellow text-white/60 transition-all"
+          className="p-2 rounded-xl bg-yeah-ink border border-yeah-line/10 hover:border-yeah-yellow/50 hover:text-yeah-yellow text-yeah-fg/60 transition-all"
           aria-label="Previous week"
         >
           &#8592;
@@ -55,7 +55,7 @@ export default function WeekNav({ weekStart, isPast }: { weekStart: Date; isPast
         {isPast && (
           <button
             onClick={goToToday}
-            className="px-3 py-1.5 rounded-xl bg-yeah-ink border border-white/10 hover:border-yeah-yellow/50 text-xs font-semibold text-white/60 hover:text-yeah-yellow transition-all"
+            className="px-3 py-1.5 rounded-xl bg-yeah-ink border border-yeah-line/10 hover:border-yeah-yellow/50 text-xs font-semibold text-yeah-fg/60 hover:text-yeah-yellow transition-all"
           >
             Today
           </button>
@@ -63,7 +63,7 @@ export default function WeekNav({ weekStart, isPast }: { weekStart: Date; isPast
 
         <button
           onClick={() => navigate(nextWeek)}
-          className="p-2 rounded-xl bg-yeah-ink border border-white/10 hover:border-yeah-yellow/50 hover:text-yeah-yellow text-white/60 transition-all"
+          className="p-2 rounded-xl bg-yeah-ink border border-yeah-line/10 hover:border-yeah-yellow/50 hover:text-yeah-yellow text-yeah-fg/60 transition-all"
           aria-label="Next week"
         >
           &#8594;
