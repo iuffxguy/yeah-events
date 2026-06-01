@@ -29,9 +29,9 @@ export default function EventCard({ event }: { event: Event }) {
         className="group relative flex flex-col bg-yeah-ink rounded-2xl overflow-hidden border border-white/5 hover:border-yeah-yellow/40 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/40 cursor-pointer animate-slide-up"
         onClick={() => setModalOpen(true)}
       >
-        {/* Image */}
-        <div className="relative h-40 bg-yeah-navy overflow-hidden">
-          {event.imageUrl ? (
+        {/* Image — only shown when we actually have one */}
+        {event.imageUrl && (
+          <div className="relative h-40 bg-yeah-navy overflow-hidden">
             <Image
               src={event.imageUrl}
               alt={event.title}
@@ -39,20 +39,13 @@ export default function EventCard({ event }: { event: Event }) {
               className="object-cover group-hover:scale-105 transition-transform duration-300"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl text-white/10 select-none">
-              {(event.themes ?? [])[0] === "music"
-                ? "♪"
-                : (event.themes ?? [])[0] === "food"
-                ? "🍽"
-                : (event.themes ?? [])[0] === "art"
-                ? "🎨"
-                : "✦"}
-            </div>
-          )}
+          </div>
+        )}
 
-          {/* Badges */}
-          <div className="absolute top-2 left-2 flex gap-1.5">
+        {/* Body */}
+        <div className="flex flex-col flex-1 p-4 space-y-2">
+          {/* Badges + confidence row */}
+          <div className="flex items-center gap-1.5">
             {event.isFree && (
               <span className="bg-yeah-teal text-yeah-navy text-xs font-bold px-2 py-0.5 rounded-full">
                 FREE
@@ -63,25 +56,18 @@ export default function EventCard({ event }: { event: Event }) {
                 KIDS
               </span>
             )}
-          </div>
-
-          {/* Confidence badge — top right */}
-          <div className="absolute top-2 right-2">
             {event.confidence === "high" && (
-              <span className="bg-yeah-yellow text-yeah-navy text-xs font-bold px-2 py-0.5 rounded-full" title={`${event.mentionCount} sources`}>
+              <span className="ml-auto bg-yeah-yellow text-yeah-navy text-xs font-bold px-2 py-0.5 rounded-full" title={`${event.mentionCount} sources`}>
                 &#9733;&#9733;&#9733;
               </span>
             )}
             {event.confidence === "medium" && (
-              <span className="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full" title={`${event.mentionCount} sources`}>
+              <span className="ml-auto bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full" title={`${event.mentionCount} sources`}>
                 &#9733;&#9733;
               </span>
             )}
           </div>
-        </div>
 
-        {/* Body */}
-        <div className="flex flex-col flex-1 p-4 space-y-2">
           <p className="text-yeah-yellow text-xs font-semibold tracking-wide uppercase">
             {format(new Date(event.startDate), "EEE, MMM d · h:mm a")}
           </p>

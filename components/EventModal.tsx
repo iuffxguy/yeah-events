@@ -61,9 +61,9 @@ export default function EventModal({
         className="relative z-10 w-full sm:max-w-lg bg-yeah-ink rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Image or color bar */}
-        <div className="relative h-48 bg-yeah-navy">
-          {event.imageUrl ? (
+        {/* Image — only shown when we have one */}
+        {event.imageUrl ? (
+          <div className="relative h-48 bg-yeah-navy">
             <Image
               src={event.imageUrl}
               alt={event.title}
@@ -71,48 +71,73 @@ export default function EventModal({
               className="object-cover"
               sizes="512px"
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-6xl text-white/10 select-none">
-              {(event.themes ?? [])[0] === "music"
-                ? "♪"
-                : (event.themes ?? [])[0] === "food"
-                ? "🍽"
-                : (event.themes ?? [])[0] === "art"
-                ? "🎨"
-                : "✦"}
+            {/* Close button */}
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+            {/* Badges */}
+            <div className="absolute top-3 left-3 flex gap-1.5">
+              {event.isFree && (
+                <span className="bg-yeah-teal text-yeah-navy text-xs font-bold px-2 py-0.5 rounded-full">
+                  FREE
+                </span>
+              )}
+              {event.isKidFriendly && (
+                <span className="bg-blue-400 text-yeah-navy text-xs font-bold px-2 py-0.5 rounded-full">
+                  KIDS
+                </span>
+              )}
             </div>
-          )}
-
-          {/* Close button */}
+          </div>
+        ) : (
+          /* No image — close button floats over content */
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+            className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
             aria-label="Close"
           >
             ✕
           </button>
-
-          {/* Badges */}
-          <div className="absolute top-3 left-3 flex gap-1.5">
-            {event.isFree && (
-              <span className="bg-yeah-teal text-yeah-navy text-xs font-bold px-2 py-0.5 rounded-full">
-                FREE
-              </span>
-            )}
-            {event.isKidFriendly && (
-              <span className="bg-blue-400 text-yeah-navy text-xs font-bold px-2 py-0.5 rounded-full">
-                KIDS
-              </span>
-            )}
-          </div>
-        </div>
+        )}
 
         {/* Content */}
-        <div className="p-5 space-y-4">
-          {/* Title */}
-          <h2 className="text-white font-display font-bold text-xl leading-snug">
-            {event.title}
-          </h2>
+        <div className={event.imageUrl ? "p-5 space-y-4" : "pt-10 px-5 pb-5 space-y-4"}>
+          {/* Title + event link */}
+          <div>
+            <h2 className="text-white font-display font-bold text-xl leading-snug">
+              {event.title}
+            </h2>
+            {event.eventUrl && (
+              <a
+                href={event.eventUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-yeah-yellow text-xs hover:underline"
+              >
+                View event page ↗
+              </a>
+            )}
+          </div>
+
+          {/* Badges (shown here when no image) */}
+          {!event.imageUrl && (event.isFree || event.isKidFriendly) && (
+            <div className="flex gap-1.5">
+              {event.isFree && (
+                <span className="bg-yeah-teal text-yeah-navy text-xs font-bold px-2 py-0.5 rounded-full">
+                  FREE
+                </span>
+              )}
+              {event.isKidFriendly && (
+                <span className="bg-blue-400 text-yeah-navy text-xs font-bold px-2 py-0.5 rounded-full">
+                  KIDS
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Date & time */}
           <div className="flex items-start gap-3">
@@ -137,6 +162,19 @@ export default function EventModal({
                   <p className="text-yeah-muted text-sm">{event.address}</p>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Map embed */}
+          {event.address && (
+            <div className="rounded-xl overflow-hidden h-40 border border-white/10">
+              <iframe
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(event.address)}&output=embed`}
+                className="w-full h-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title={`Map for ${event.venueName ?? event.address}`}
+              />
             </div>
           )}
 
