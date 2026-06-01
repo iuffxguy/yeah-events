@@ -4,10 +4,13 @@ import { startOfDay, endOfDay } from "date-fns";
 
 /**
  * Normalize a title for fuzzy deduplication:
- * lowercase, strip punctuation, collapse whitespace.
+ * - Strip subtitle after " : " or " - " (recurring series often add time-slot subtitles)
+ * - Lowercase, strip punctuation, collapse whitespace.
  */
 export function normalizeTitle(title: string): string {
-  return title
+  // Strip subtitle after colon or em-dash (e.g. "Drop-In Class: Senior Ballet" → "Drop-In Class")
+  const base = title.split(/\s*:\s+|\s+--\s+/)[0];
+  return base
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "")
     .replace(/\s+/g, " ")
@@ -87,19 +90,39 @@ export async function upsertEvent(
     return "merged";
   }
 
-  // New event — insert and create the first mention
-  const [inserted] = await db
+  // New event — insert, ignoring conflicts from parallel scrapes
+  const inserted = await db
     .insert(events)
     .values({
       ...input,
       confidence: "low",
       mentionCount: 1,
     })
+    .onConflictDoNothing()
     .returning({ id: events.id });
+
+  // If conflict (race condition), fall back to finding and merging the winner
+  if (inserted.length === 0) {
+    const winner = await db.query.events.findFirst({
+      where: and(
+        eq(events.cityId, input.cityId),
+        gte(events.startDate, dayStart),
+        lte(events.startDate, dayEnd),
+        sql`lower(regexp_replace(title, '[^a-zA-Z0-9 ]', '', 'g')) = ${normalized}`
+      ),
+    });
+    if (winner) {
+      await db
+        .insert(eventMentions)
+        .values({ eventId: winner.id, sourceId: input.sourceId })
+        .onConflictDoNothing();
+    }
+    return "merged";
+  }
 
   await db
     .insert(eventMentions)
-    .values({ eventId: inserted.id, sourceId: input.sourceId })
+    .values({ eventId: inserted[0].id, sourceId: input.sourceId })
     .onConflictDoNothing();
 
   return "inserted";
