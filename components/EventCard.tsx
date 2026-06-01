@@ -26,7 +26,7 @@ export default function EventCard({ event }: { event: Event }) {
   return (
     <>
       <div
-        className="group relative flex flex-col bg-yeah-ink rounded-2xl overflow-hidden border border-white/5 hover:border-yeah-yellow/40 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/40 cursor-pointer animate-slide-up"
+        className="group relative flex flex-col bg-yeah-ink rounded-2xl overflow-hidden border border-yeah-line/5 hover:border-yeah-yellow/40 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/40 cursor-pointer animate-slide-up"
         onClick={() => setModalOpen(true)}
       >
         {/* Image — only shown when we actually have one */}
@@ -62,7 +62,7 @@ export default function EventCard({ event }: { event: Event }) {
               </span>
             )}
             {event.confidence === "medium" && (
-              <span className="ml-auto bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full" title={`${event.mentionCount} sources`}>
+              <span className="ml-auto bg-yeah-line/20 text-yeah-fg text-xs font-bold px-2 py-0.5 rounded-full" title={`${event.mentionCount} sources`}>
                 &#9733;&#9733;
               </span>
             )}
@@ -72,7 +72,7 @@ export default function EventCard({ event }: { event: Event }) {
             {format(new Date(event.startDate), "EEE, MMM d · h:mm a")}
           </p>
 
-          <h3 className="text-white font-display font-bold text-base leading-snug line-clamp-2">
+          <h3 className="text-yeah-fg font-display font-bold text-base leading-snug line-clamp-2">
             {event.title}
           </h3>
 
@@ -87,7 +87,7 @@ export default function EventCard({ event }: { event: Event }) {
                   key={theme}
                   className={clsx(
                     "theme-pill",
-                    THEME_COLORS[theme] ?? "bg-white/10 text-white/60"
+                    THEME_COLORS[theme] ?? "bg-yeah-line/10 text-yeah-fg/60"
                   )}
                 >
                   {theme}

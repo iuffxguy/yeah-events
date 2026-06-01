@@ -7,10 +7,26 @@
 :root {
   --font-display: "Syne", system-ui, sans-serif;
   --font-body: "Inter", system-ui, sans-serif;
+
+  /* Dark theme (default) */
+  --yeah-bg:   13 15 26;      /* #0D0F1A */
+  --yeah-ink:  26 29 46;      /* #1A1D2E */
+  --yeah-fg:   255 255 255;   /* white text */
+  --yeah-line: 255 255 255;   /* white borders */
+}
+
+html.light {
+  /* Light theme */
+  --yeah-bg:   244 245 247;   /* #F4F5F7 */
+  --yeah-ink:  255 255 255;   /* #FFFFFF */
+  --yeah-fg:   13 15 26;      /* #0D0F1A dark text */
+  --yeah-line: 0 0 0;         /* black borders */
 }
 
 body {
-  @apply bg-yeah-navy text-white font-body antialiased;
+  background-color: rgb(var(--yeah-bg));
+  color: rgb(var(--yeah-fg));
+  @apply font-body antialiased;
 }
 
 /* Scrollbar */

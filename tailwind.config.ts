@@ -14,12 +14,17 @@ const config: Config = {
       },
       colors: {
         yeah: {
+          // Fixed brand colors — same in both themes
           yellow: "#FFE034",
           coral: "#FF4D4D",
           teal: "#00C2A8",
-          navy: "#0D0F1A",
-          ink: "#1A1D2E",
+          navy: "#0D0F1A",   // always-dark (used for text on colored badges)
           muted: "#6B7280",
+          // Theme-aware colors — defined as CSS variables
+          bg:   "rgb(var(--yeah-bg)   / <alpha-value>)",  // page background
+          ink:  "rgb(var(--yeah-ink)  / <alpha-value>)",  // card/surface background
+          fg:   "rgb(var(--yeah-fg)   / <alpha-value>)",  // primary text
+          line: "rgb(var(--yeah-line) / <alpha-value>)",  // borders & overlays
         },
       },
       animation: {

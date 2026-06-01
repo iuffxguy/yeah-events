@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { City } from "@/db/schema";
+import ThemeToggle from "./ThemeToggle";
 
 const THEME_COLORS: Record<string, string> = {
   charlotte: "bg-yeah-teal",
@@ -27,7 +28,7 @@ export default function CityHeader({ city }: { city: City }) {
           </span>
         </Link>
 
-        {/* Nav */}
+        {/* Nav + theme toggle */}
         <nav className="flex items-center gap-1 text-sm font-semibold">
           <Link
             href="/"
@@ -41,6 +42,7 @@ export default function CityHeader({ city }: { city: City }) {
           >
             Big Events
           </Link>
+          <ThemeToggle />
         </nav>
       </div>
     </header>

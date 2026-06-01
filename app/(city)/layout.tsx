@@ -14,7 +14,7 @@ export default async function CityLayout({
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {children}
       </main>
-      <footer className="border-t border-white/10 py-6 text-center text-sm text-yeah-muted">
+      <footer className="border-t border-yeah-line/10 py-6 text-center text-sm text-yeah-muted">
         Yeah {city.name} &mdash; Find what&apos;s happening
       </footer>
     </div>

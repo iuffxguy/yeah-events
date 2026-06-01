@@ -58,12 +58,12 @@ export default function EventModal({
 
       {/* Panel */}
       <div
-        className="relative z-10 w-full sm:max-w-lg bg-yeah-ink rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl animate-slide-up"
+        className="relative z-10 w-full sm:max-w-lg bg-yeah-ink rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl animate-slide-up border border-yeah-line/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Image — only shown when we have one */}
         {event.imageUrl ? (
-          <div className="relative h-48 bg-yeah-navy">
+          <div className="relative h-48 bg-yeah-bg">
             <Image
               src={event.imageUrl}
               alt={event.title}
@@ -108,7 +108,7 @@ export default function EventModal({
         <div className={event.imageUrl ? "p-5 space-y-4" : "pt-10 px-5 pb-5 space-y-4"}>
           {/* Title + event link */}
           <div>
-            <h2 className="text-white font-display font-bold text-xl leading-snug">
+            <h2 className="text-yeah-fg font-display font-bold text-xl leading-snug">
               {event.title}
             </h2>
             {event.eventUrl && (
@@ -143,7 +143,7 @@ export default function EventModal({
           <div className="flex items-start gap-3">
             <span className="text-yeah-yellow mt-0.5">&#128197;</span>
             <div>
-              <p className="text-white text-sm font-semibold">{dateStr}</p>
+              <p className="text-yeah-fg text-sm font-semibold">{dateStr}</p>
               <p className="text-yeah-muted text-sm">
                 {timeStr}{endTimeStr ? ` – ${endTimeStr}` : ""}
               </p>
@@ -156,7 +156,7 @@ export default function EventModal({
               <span className="text-yeah-yellow mt-0.5">&#128205;</span>
               <div>
                 {event.venueName && (
-                  <p className="text-white text-sm font-semibold">{event.venueName}</p>
+                  <p className="text-yeah-fg text-sm font-semibold">{event.venueName}</p>
                 )}
                 {event.address && (
                   <p className="text-yeah-muted text-sm">{event.address}</p>
@@ -180,7 +180,7 @@ export default function EventModal({
 
           {/* Description / summary */}
           {event.description && (
-            <p className="text-white/70 text-sm leading-relaxed border-t border-white/10 pt-4">
+            <p className="text-yeah-fg/70 text-sm leading-relaxed border-t border-yeah-line/10 pt-4">
               {event.description}
             </p>
           )}
@@ -193,7 +193,7 @@ export default function EventModal({
                   key={theme}
                   className={clsx(
                     "theme-pill",
-                    THEME_COLORS[theme] ?? "bg-white/10 text-white/60"
+                    THEME_COLORS[theme] ?? "bg-yeah-line/10 text-yeah-fg/60"
                   )}
                 >
                   {theme}
