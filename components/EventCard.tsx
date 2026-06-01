@@ -58,12 +58,12 @@ export default function EventCard({ event }: { event: Event }) {
               </span>
             )}
             {event.confidence === "high" && (
-              <span className="ml-auto bg-yeah-yellow text-yeah-navy text-xs font-bold px-2 py-0.5 rounded-full" title={`${event.mentionCount} sources`}>
+              <span className="ml-auto bg-yeah-yellow text-yeah-navy text-xs font-bold px-2 py-0.5 rounded-full" title={`Spotted on ${event.mentionCount} sources — high confidence this event is real`}>
                 &#9733;&#9733;&#9733;
               </span>
             )}
             {event.confidence === "medium" && (
-              <span className="ml-auto bg-yeah-line/20 text-yeah-fg text-xs font-bold px-2 py-0.5 rounded-full" title={`${event.mentionCount} sources`}>
+              <span className="ml-auto bg-yeah-line/20 text-yeah-fg text-xs font-bold px-2 py-0.5 rounded-full" title={`Spotted on ${event.mentionCount} sources — medium confidence`}>
                 &#9733;&#9733;
               </span>
             )}
