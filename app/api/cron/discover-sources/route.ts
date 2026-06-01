@@ -12,24 +12,34 @@ type DiscoveredSource = {
   notes: string;
 };
 
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
 /**
  * Verify a URL is reachable before saving it.
- * Returns true only on 2xx responses. Treats 403/405 as blocked (not valid
- * for scraping). Times out after 8s to stay within function limits.
+ * First tries HEAD; falls back to GET if blocked (many CDNs return 403/405 on HEAD).
+ * Accepts 2xx or 403 (page exists but blocks bots — worth trying to scrape anyway).
  */
 async function isSourceReachable(url: string): Promise<boolean> {
+  const headers = { "User-Agent": UA };
   try {
     const res = await fetch(url, {
       method: "HEAD",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (compatible; YeahEventsBot/1.0; +https://yeah-events.com/bot)",
-      },
+      headers,
       signal: AbortSignal.timeout(8_000),
       redirect: "follow",
     });
-    // Accept 2xx and 3xx final redirects; reject 4xx/5xx
-    return res.ok;
+    if (res.ok || res.status === 403) return true;
+    // Some servers reject HEAD — retry with GET
+    if (res.status === 405 || res.status === 404) {
+      const get = await fetch(url, {
+        method: "GET",
+        headers,
+        signal: AbortSignal.timeout(8_000),
+        redirect: "follow",
+      });
+      return get.ok || get.status === 403;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -71,41 +81,45 @@ async function handler(request: NextRequest) {
       });
       const hoodList = hoods.map((h) => h.name).join(", ");
 
-      const discovered = await askForJson<DiscoveredSource[]>(
-        systemPrompt(
-          "an expert researcher who finds event listing websites and public APIs for cities"
-        ),
-        `Find 20 high-quality event listing websites for ${city.name} that are especially good for weekend events, community happenings, and things to do.
+      // --- City-wide pass ---
+      const cityDiscovered = await askForJson<DiscoveredSource[]>(
+        systemPrompt("an expert researcher who finds event listing websites for cities"),
+        `Find 15 high-quality event listing websites for ${city.name} that list specific upcoming events with dates.
 
-Known neighborhoods in ${city.name}: ${hoodList}
+Prioritize: local newspapers/magazines with event sections, tourism sites, Eventbrite/Meetup city pages, parks & rec calendars, arts org calendars.
+Avoid: national sites, anything requiring login or payment.
 
-Prioritize sources that:
-- List specific upcoming events with dates (not just venue directories)
-- Cover weekends well: festivals, markets, concerts, outdoor events, family events
-- Are free to access with no login or paywall
-- Are local or city-specific (not just national sites with a city filter)
-
-Good source types to look for:
-- Local "things to do this weekend" pages (newspapers, city magazines, tourism sites)
-- Neighborhood-specific event pages (e.g. NoDa arts district, South End, Uptown, Plaza Midwood)
-- Local parks & recreation event pages
-- Community organization and BID (Business Improvement District) event calendars
-- Local arts/music venue listing pages
-- Free ticketing pages (Eventbrite, Ticketmaster city pages)
-- Local alternative newspapers or city magazines with event listings
-
-Return a JSON array with objects containing:
-- "url": the full URL (be specific — link directly to the events/calendar page, not the homepage)
-- "source_type": one of "website", "api", or "rss"
-- "notes": one sentence about what kinds of events this source covers
-
-Only include real URLs you are confident exist and are publicly accessible.`
+Return JSON array: [{ "url": "...", "source_type": "website"|"api"|"rss", "notes": "..." }]
+Link directly to events/calendar pages, not homepages.`
       );
 
-      // Validate then upsert sources
+      // --- Per-neighborhood passes (batch into groups of 4 to limit Claude calls) ---
+      const neighborhoodDiscovered: DiscoveredSource[] = [];
+      const BATCH = 4;
+      for (let i = 0; i < hoods.length; i += BATCH) {
+        const batch = hoods.slice(i, i + BATCH).map((h) => h.name);
+        const batchResults = await askForJson<DiscoveredSource[]>(
+          systemPrompt("an expert researcher who finds hyperlocal neighborhood event websites"),
+          `Find event listing websites specifically for these neighborhoods in ${city.name}: ${batch.join(", ")}.
+
+Look for:
+- Neighborhood association or BID (Business Improvement District) event pages
+- Arts district event calendars (e.g. NoDa Arts District, South End events)
+- Neighborhood Facebook pages or community boards with public event listings
+- Local venue or bar/restaurant event pages in that neighborhood
+- Neighborhood-specific Eventbrite or Meetup searches
+
+Return JSON array: [{ "url": "...", "source_type": "website"|"api"|"rss", "notes": "one sentence about what neighborhood and event types this covers" }]
+Only include URLs you are confident are real and publicly accessible.`
+        );
+        neighborhoodDiscovered.push(...batchResults);
+      }
+
+      // --- Validate and save all discovered sources ---
+      const allDiscovered = [...cityDiscovered, ...neighborhoodDiscovered];
       let added = 0;
       let rejected = 0;
-      for (const source of discovered) {
+      for (const source of allDiscovered) {
         const reachable = await isSourceReachable(source.url);
         if (!reachable) {
           console.log(`[discover-sources] rejected unreachable: ${source.url}`);
@@ -129,7 +143,7 @@ Only include real URLs you are confident exist and are publicly accessible.`
       }
 
       results[city.slug] = added;
-      console.log(`[discover-sources] ${city.name}: ${added} added, ${rejected} rejected`);
+      console.log(`[discover-sources] ${city.name}: ${added} added, ${rejected} rejected (${allDiscovered.length} total suggested)`);
     } catch (err) {
       console.error(`[discover-sources] Failed for ${city.name}:`, err);
       results[city.slug] = -1;
