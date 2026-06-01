@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, cities, eventSources } from "@/db";
+import { db, cities, neighborhoods, eventSources } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { askForJson, systemPrompt } from "@/lib/anthropic";
 
@@ -66,11 +66,18 @@ async function handler(request: NextRequest) {
 
   for (const city of activeCities) {
     try {
+      const hoods = await db.query.neighborhoods.findMany({
+        where: eq(neighborhoods.cityId, city.id),
+      });
+      const hoodList = hoods.map((h) => h.name).join(", ");
+
       const discovered = await askForJson<DiscoveredSource[]>(
         systemPrompt(
           "an expert researcher who finds event listing websites and public APIs for cities"
         ),
-        `Find 15 high-quality event listing websites for ${city.name} that are especially good for weekend events, community happenings, and things to do.
+        `Find 20 high-quality event listing websites for ${city.name} that are especially good for weekend events, community happenings, and things to do.
+
+Known neighborhoods in ${city.name}: ${hoodList}
 
 Prioritize sources that:
 - List specific upcoming events with dates (not just venue directories)
@@ -80,13 +87,12 @@ Prioritize sources that:
 
 Good source types to look for:
 - Local "things to do this weekend" pages (newspapers, city magazines, tourism sites)
-- Neighborhood or district event calendars (arts districts, downtown areas, parks)
+- Neighborhood-specific event pages (e.g. NoDa arts district, South End, Uptown, Plaza Midwood)
 - Local parks & recreation event pages
-- Community organization event pages
+- Community organization and BID (Business Improvement District) event calendars
 - Local arts/music venue listing pages
-- Reddit or community boards that aggregate local events (read-only pages)
-- Local Facebook event pages (public, no login required)
 - Free ticketing pages (Eventbrite, Ticketmaster city pages)
+- Local alternative newspapers or city magazines with event listings
 
 Return a JSON array with objects containing:
 - "url": the full URL (be specific — link directly to the events/calendar page, not the homepage)
