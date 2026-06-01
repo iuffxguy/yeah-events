@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import type { Event } from "@/db/schema";
 import clsx from "clsx";
 import { parseEventDate } from "@/lib/format-date";
+import { downloadIcs, googleCalendarUrl } from "@/lib/calendar-export";
 
 const THEME_COLORS: Record<string, string> = {
   music: "bg-purple-500/20 text-purple-300",
@@ -202,6 +203,24 @@ export default function EventModal({
               ))}
             </div>
           )}
+
+          {/* Add to Calendar */}
+          <div className="flex gap-2 border-t border-yeah-line/10 pt-4">
+            <button
+              onClick={() => downloadIcs(event)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-yeah-line/20 text-yeah-fg/70 text-sm font-semibold hover:border-yeah-yellow/50 hover:text-yeah-yellow transition-all"
+            >
+              &#128197; Apple / Outlook
+            </button>
+            <a
+              href={googleCalendarUrl(event)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-yeah-line/20 text-yeah-fg/70 text-sm font-semibold hover:border-yeah-yellow/50 hover:text-yeah-yellow transition-all"
+            >
+              &#128197; Google Calendar
+            </a>
+          </div>
 
           {/* CTA */}
           {event.eventUrl && (
