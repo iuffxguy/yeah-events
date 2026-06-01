@@ -84,7 +84,7 @@ async function innerHandler(request: NextRequest) {
 
   // --- Single-source mode: scrape one source and insert events ---
   const now = startOfDay(new Date());
-  const windowEnd = addDays(now, 7);
+  const windowEnd = addDays(now, 14);
 
   const source = await db.query.eventSources.findFirst({
     where: eq(eventSources.id, Number(sourceIdParam)),
