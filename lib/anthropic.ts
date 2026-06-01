@@ -24,7 +24,7 @@ export async function askForJson<T>(
 ): Promise<T> {
   const message = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 4096,
+    max_tokens: 8192,
     system,
     messages: [{ role: "user", content: userMessage }],
   });
