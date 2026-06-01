@@ -31,10 +31,13 @@ export default async function EventsPage({
 }) {
   const { city, neighborhoods: hoods } = await getCityContext();
 
-  // Determine week window
+  // Determine week window — default to today, never show past days unless
+  // explicitly navigated to via the week param
+  const today = startOfDay(new Date());
   const weekStart = searchParams.week
     ? startOfDay(new Date(searchParams.week))
-    : startOfDay(new Date());
+    : today;
+  const isPast = weekStart < today;
   const weekEnd = addDays(weekStart, 7);
 
   // Build filters
@@ -77,7 +80,7 @@ export default async function EventsPage({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <WeekNav weekStart={weekStart} />
+      <WeekNav weekStart={weekStart} isPast={isPast} />
 
       <FilterBar
         neighborhoods={hoods}

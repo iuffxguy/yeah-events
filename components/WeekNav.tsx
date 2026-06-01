@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { addDays, subDays, format, isToday } from "date-fns";
 
-export default function WeekNav({ weekStart }: { weekStart: Date }) {
+export default function WeekNav({ weekStart, isPast }: { weekStart: Date; isPast: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -13,16 +13,21 @@ export default function WeekNav({ weekStart }: { weekStart: Date }) {
     router.push(`/?${params.toString()}`);
   }
 
+  function goToToday() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("week");
+    router.push(`/?${params.toString()}`);
+  }
+
   const prevWeek = subDays(weekStart, 7);
   const nextWeek = addDays(weekStart, 7);
   const weekEnd = addDays(weekStart, 6);
-  const isCurrentWeek = isToday(weekStart) || isToday(addDays(weekStart, -1));
 
   return (
     <div className="flex items-center justify-between">
       <div>
         <h1 className="text-2xl sm:text-3xl font-display font-bold text-white">
-          {isCurrentWeek ? (
+          {!isPast ? (
             <>
               What&apos;s{" "}
               <span className="text-yeah-yellow">Happening</span>
@@ -38,6 +43,7 @@ export default function WeekNav({ weekStart }: { weekStart: Date }) {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Back arrow — always visible so you can browse past weeks */}
         <button
           onClick={() => navigate(prevWeek)}
           className="p-2 rounded-xl bg-yeah-ink border border-white/10 hover:border-yeah-yellow/50 hover:text-yeah-yellow text-white/60 transition-all"
@@ -46,9 +52,9 @@ export default function WeekNav({ weekStart }: { weekStart: Date }) {
           &#8592;
         </button>
 
-        {!isCurrentWeek && (
+        {isPast && (
           <button
-            onClick={() => navigate(new Date())}
+            onClick={goToToday}
             className="px-3 py-1.5 rounded-xl bg-yeah-ink border border-white/10 hover:border-yeah-yellow/50 text-xs font-semibold text-white/60 hover:text-yeah-yellow transition-all"
           >
             Today
