@@ -70,16 +70,30 @@ async function handler(request: NextRequest) {
         systemPrompt(
           "an expert researcher who finds event listing websites and public APIs for cities"
         ),
-        `Find the top 10 event listing websites and free public event APIs for ${city.name}.
-Include local event calendars, city government event pages, Eventbrite city pages, Meetup city pages,
-local newspaper event sections, and any free public APIs.
+        `Find 15 high-quality event listing websites for ${city.name} that are especially good for weekend events, community happenings, and things to do.
+
+Prioritize sources that:
+- List specific upcoming events with dates (not just venue directories)
+- Cover weekends well: festivals, markets, concerts, outdoor events, family events
+- Are free to access with no login or paywall
+- Are local or city-specific (not just national sites with a city filter)
+
+Good source types to look for:
+- Local "things to do this weekend" pages (newspapers, city magazines, tourism sites)
+- Neighborhood or district event calendars (arts districts, downtown areas, parks)
+- Local parks & recreation event pages
+- Community organization event pages
+- Local arts/music venue listing pages
+- Reddit or community boards that aggregate local events (read-only pages)
+- Local Facebook event pages (public, no login required)
+- Free ticketing pages (Eventbrite, Ticketmaster city pages)
 
 Return a JSON array with objects containing:
-- "url": the full URL of the source
+- "url": the full URL (be specific — link directly to the events/calendar page, not the homepage)
 - "source_type": one of "website", "api", or "rss"
-- "notes": one sentence about what events this source covers
+- "notes": one sentence about what kinds of events this source covers
 
-Only include real, publicly accessible URLs. No paywalls.`
+Only include real URLs you are confident exist and are publicly accessible.`
       );
 
       // Validate then upsert sources
