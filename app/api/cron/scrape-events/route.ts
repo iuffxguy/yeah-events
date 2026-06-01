@@ -112,17 +112,23 @@ async function innerHandler(request: NextRequest) {
       "an event data extraction specialist who reads structured and plain-text event data and returns structured JSON"
     ),
     `Extract all events happening between ${now.toISOString()} and ${windowEnd.toISOString()}.
-City: ${cityRecord.name}
+City: ${cityRecord.name} (timezone: America/New_York)
 Known neighborhoods: ${hoods.map((h) => h.name).join(", ")}
 
 For each event return:
 - title
-- description: 2-3 sentence human-readable summary covering what the event is, what attendees can expect, and any notable details (performers, activities, food, etc.). Write in plain English, not marketing copy. If the source has no details, synthesize a helpful summary from whatever context is available.
-- start_date (ISO 8601), end_date (ISO 8601, optional)
+- description: 2-3 sentence human-readable summary covering what the event is, what attendees can expect, and any notable details (performers, activities, food, etc.). Write in plain English, not marketing copy.
+- start_date: local ${cityRecord.name} time as ISO 8601 WITHOUT timezone offset (e.g. "2026-06-01T14:00:00"). If the exact time is unknown use noon ("T12:00:00"), never midnight.
+- end_date: same format, optional
 - venue_name, address, neighborhood (match to known neighborhoods list if possible)
 - is_free (boolean), is_kid_friendly (boolean)
-- themes (array of short tags like: music, art, food, sports, family, comedy, outdoor, market, festival, film)
+- themes: array using ONLY these tags: music, art, food, sports, family, comedy, outdoor, market, festival, film, theater, dance, technology. Map source categories to the closest match. Max 3 tags.
 - image_url (if present), event_url (direct link to the event page if present)
+
+Important rules:
+- If a recurring event has multiple time slots on the same day, return it ONCE using the first time slot only.
+- Do not return duplicate events. Each unique event title should appear at most once per calendar day.
+- Skip online-only events unless they are specific to ${cityRecord.name}.
 
 Return a JSON array. If no events found, return [].
 

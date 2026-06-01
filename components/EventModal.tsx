@@ -5,6 +5,7 @@ import Image from "next/image";
 import { format } from "date-fns";
 import type { Event } from "@/db/schema";
 import clsx from "clsx";
+import { parseEventDate } from "@/lib/format-date";
 
 const THEME_COLORS: Record<string, string> = {
   music: "bg-purple-500/20 text-purple-300",
@@ -41,10 +42,10 @@ export default function EventModal({
     return () => { document.body.style.overflow = ""; };
   }, []);
 
-  const dateStr = format(new Date(event.startDate), "EEEE, MMMM d, yyyy");
-  const timeStr = format(new Date(event.startDate), "h:mm a");
+  const dateStr = format(parseEventDate(event.startDate), "EEEE, MMMM d, yyyy");
+  const timeStr = format(parseEventDate(event.startDate), "h:mm a");
   const endTimeStr = event.endDate
-    ? format(new Date(event.endDate), "h:mm a")
+    ? format(parseEventDate(event.endDate), "h:mm a")
     : null;
 
   return (

@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import type { Event } from "@/db/schema";
 import clsx from "clsx";
 import EventModal from "./EventModal";
+import { parseEventDate } from "@/lib/format-date";
 
 const THEME_COLORS: Record<string, string> = {
   music: "bg-purple-500/20 text-purple-300",
@@ -69,7 +70,7 @@ export default function EventCard({ event }: { event: Event }) {
           </div>
 
           <p className="text-yeah-yellow text-xs font-semibold tracking-wide uppercase">
-            {format(new Date(event.startDate), "EEE, MMM d · h:mm a")}
+            {format(parseEventDate(event.startDate), "EEE, MMM d · h:mm a")}
           </p>
 
           <h3 className="text-yeah-fg font-display font-bold text-base leading-snug line-clamp-2">

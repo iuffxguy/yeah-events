@@ -47,8 +47,8 @@ export default function FilterBar({ neighborhoods, themes, current }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Mobile toggle — hidden on md+ where filters are always visible */}
-      <div className="flex items-center gap-2 md:hidden">
+      {/* Toggle button — visible on all screen sizes */}
+      <div className="flex items-center gap-2">
         <button
           onClick={() => setExpanded(!expanded)}
           className={clsx(
@@ -77,8 +77,8 @@ export default function FilterBar({ neighborhoods, themes, current }: Props) {
         )}
       </div>
 
-      {/* Filter rows — always visible on md+, collapsible on mobile */}
-      <div className={clsx("space-y-3", !expanded && "hidden md:block")}>
+      {/* Filter rows — collapsible on all screen sizes */}
+      <div className={clsx("space-y-3", !expanded && "hidden")}>
         {/* Row 1: Toggles + Sort */}
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -187,9 +187,9 @@ export default function FilterBar({ neighborhoods, themes, current }: Props) {
           </div>
         )}
 
-        {/* Active filter count + clear — desktop only (mobile has it in the toggle row) */}
+        {/* Active filter count + clear */}
         {activeCount > 0 && (
-          <div className="hidden md:flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-1">
             <span className="text-xs text-yeah-muted">
               {activeCount} filter{activeCount > 1 ? "s" : ""} active
             </span>
