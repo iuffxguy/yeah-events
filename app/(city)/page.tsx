@@ -67,6 +67,7 @@ export default async function EventsPage({
     where: and(...filters),
     orderBy,
     limit: 100,
+    with: { venue: true },
   });
 
   // Filter by theme in-app (themes is an array column)

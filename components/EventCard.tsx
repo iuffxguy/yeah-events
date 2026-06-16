@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { format } from "date-fns";
-import type { Event } from "@/db/schema";
+import type { EventWithVenue } from "@/db/schema";
 import clsx from "clsx";
 import EventModal from "./EventModal";
 import { parseEventDate } from "@/lib/format-date";
@@ -21,7 +21,7 @@ const THEME_COLORS: Record<string, string> = {
   film: "bg-indigo-500/20 text-indigo-300",
 };
 
-export default function EventCard({ event }: { event: Event }) {
+export default function EventCard({ event }: { event: EventWithVenue }) {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (

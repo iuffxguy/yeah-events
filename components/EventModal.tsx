@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { format } from "date-fns";
-import type { Event } from "@/db/schema";
+import type { EventWithVenue } from "@/db/schema";
 import clsx from "clsx";
+import VenueDrawer from "./VenueDrawer";
 import { parseEventDate } from "@/lib/format-date";
 import { downloadIcs, googleCalendarUrl } from "@/lib/calendar-export";
 
@@ -25,9 +26,11 @@ export default function EventModal({
   event,
   onClose,
 }: {
-  event: Event;
+  event: EventWithVenue;
   onClose: () => void;
 }) {
+  const [venueOpen, setVenueOpen] = useState(false);
+
   // Close on Escape key
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -50,7 +53,13 @@ export default function EventModal({
     : null;
 
   return (
-    // Backdrop
+    <>
+    {/* Venue drawer */}
+    {venueOpen && event.venue && (
+      <VenueDrawer venue={event.venue} onClose={() => setVenueOpen(false)} />
+    )}
+
+    {/* Backdrop */}
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onClose}
@@ -157,26 +166,20 @@ export default function EventModal({
             <div className="flex items-start gap-3">
               <span className="text-yeah-yellow mt-0.5">&#128205;</span>
               <div>
-                {event.venueName && (
+                {event.venue ? (
+                  <button
+                    onClick={() => setVenueOpen(true)}
+                    className="text-yeah-fg text-sm font-semibold hover:text-yeah-yellow transition-colors text-left"
+                  >
+                    {event.venue.displayName} ›
+                  </button>
+                ) : event.venueName ? (
                   <p className="text-yeah-fg text-sm font-semibold">{event.venueName}</p>
-                )}
-                {event.address && (
+                ) : null}
+                {event.address && event.address.toLowerCase() !== "not specified" && (
                   <p className="text-yeah-muted text-sm">{event.address}</p>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Map embed */}
-          {event.address && (
-            <div className="rounded-xl overflow-hidden h-40 border border-white/10">
-              <iframe
-                src={`https://maps.google.com/maps?q=${encodeURIComponent(event.address)}&output=embed`}
-                className="w-full h-full border-0"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title={`Map for ${event.venueName ?? event.address}`}
-              />
             </div>
           )}
 
@@ -236,5 +239,6 @@ export default function EventModal({
         </div>
       </div>
     </div>
+    </>
   );
 }

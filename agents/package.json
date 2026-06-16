@@ -1,0 +1,19 @@
+{
+  "name": "yeah-events-agents",
+  "version": "1.0.0",
+  "description": "External scraping agents for Yeah Events — runs on Unraid home server",
+  "type": "module",
+  "scripts": {
+    "discover-sources": "node discover-sources.js",
+    "scrape-events": "node scrape-events.js",
+    "major-events": "node major-events.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.9.0",
+    "cheerio": "^1.0.0",
+    "date-fns": "^3.6.0",
+    "drizzle-orm": "^0.30.0",
+    "playwright": "^1.44.0",
+    "ws": "^8.17.0"
+  }
+}

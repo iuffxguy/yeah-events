@@ -1,0 +1,14 @@
+# Yeah Events — Agent Cron Schedule
+# Timezone: America/New_York (set TZ env var in Docker container if needed)
+#
+# Agent 1 — Discover Sources:  Sundays at 1am
+# Agent 2 — Scrape Events:     Sundays at 3am  (runs after Agent 1 adds new sources)
+# Agent 3 — Major Events:      1st of month at 2am
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# m  h   dom  mon  dow  command
+0    1   *    *    0    cd /app && node discover-sources.js >> /var/log/yeah-discover.log 2>&1
+0    3   *    *    0    cd /app && node scrape-events.js >> /var/log/yeah-scrape.log 2>&1
+0    2   1    *    *    cd /app && node major-events.js >> /var/log/yeah-major.log 2>&1
