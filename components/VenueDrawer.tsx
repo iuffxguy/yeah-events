@@ -22,7 +22,7 @@ export default function VenueDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-60 flex justify-end"
+      className="fixed inset-0 z-[60] flex justify-end"
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/50" />
