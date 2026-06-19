@@ -1,27 +1,31 @@
 /**
- * Agent 5 — Validate Events
+ * Agent 5 — Validate Events (DRY RUN — logs candidates, writes nothing)
  *
- * Spot-checks eventUrl / imageUrl on upcoming events. Catches two failure
- * modes scraping produces:
- *   1. Dead links — fetch fails or returns a non-2xx status.
- *   2. Wrong-page links — the URL resolves fine but points at a venue's
- *      homepage or a generic listings page instead of the specific event
- *      (e.g. "Godfrey at The Comedy Zone" linking to thecomedyzonecharlotte.com/
- *      instead of that show's page). Ollama checks the fetched page text
- *      against the event's title/venue/date to catch this.
+ * Status: disabled from the cron schedule and from writing to the DB.
+ * Two prior approaches both wrongly flagged well-known, definitely-real
+ * shows (Chris Stapleton, George Lopez, Charlotte Symphony, etc.) as bad:
  *
- * Bad links are cleared (set to null) rather than guessed at — the agents
- * don't track per-source page URLs to fall back to, and no link is better
- * than a misleading one.
+ *   1. An Ollama content-relevance check against plain fetch() HTML — most
+ *      ticketing sites are client-rendered SPAs, so static HTML has none
+ *      of the real content, and the model was correctly judging garbage.
+ *   2. Even restricted to confirmed-dead signals only (404/410 or a
+ *      network-level failure), major ticketing platforms (Ticketmaster
+ *      etc.) appear to bot-block or hang on plain server-side requests
+ *      from this box, which then reads as "dead" when it isn't.
+ *
+ * Both rounds caused real damage (cleared dozens of legitimate links in
+ * prod, recovered via re-running scrape-events.js to backfill). Don't
+ * re-enable DB writes here, and don't re-add this to crontab, until the
+ * detection approach is fixed — most likely by checking links through
+ * Playwright (same as the scrapers use) instead of a bare fetch, since
+ * that's what's actually getting through these sites' bot detection
+ * elsewhere in this codebase.
  *
  * Window: next 30 days (closer-in events matter most; keeps runtime bounded)
- * Schedule: Every 2 days at 5am, after dedup-events (see crontab)
  * Run manually: node validate-events.js
  */
 
-import * as cheerio from "cheerio";
 import { db, cities, events } from "./db.js";
-import { askForJson } from "./ollama.js";
 import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { addDays, startOfDay } from "date-fns";
 
@@ -30,67 +34,49 @@ const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
 // ---------------------------------------------------------------------------
-// Image link check — just needs to resolve to an actual image
+// Image link check — same conservative rule as event links: only flag
+// confirmed-dead (404/410), since some CDNs reject HEAD with a 405 even
+// when the image is fine via GET.
 // ---------------------------------------------------------------------------
 
 async function isValidImageUrl(url) {
   try {
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       method: "HEAD",
       signal: AbortSignal.timeout(FETCH_TIMEOUT),
       headers: { "User-Agent": UA },
     });
-    if (!res.ok) return false;
+    if (res.status === 405) {
+      res = await fetch(url, {
+        signal: AbortSignal.timeout(FETCH_TIMEOUT),
+        headers: { "User-Agent": UA },
+      });
+    }
+    if (res.status === 404 || res.status === 410) return false;
+    if (!res.ok) return true; // can't confirm dead, leave alone
     const type = res.headers.get("content-type") ?? "";
-    return type.startsWith("image/");
+    return type === "" || type.startsWith("image/");
   } catch {
     return false;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Event link check — must resolve AND describe this specific event
+// Event link check — only flag confirmed dead links. Many ticketing sites
+// (Ticketmaster, etc.) return 403/429/503 to plain server-side requests as
+// bot-detection, not because the link is actually broken — only a genuine
+// network failure or 404/410 counts as dead, everything else is left alone.
 // ---------------------------------------------------------------------------
 
-async function fetchPageSnippet(url) {
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(FETCH_TIMEOUT),
-    headers: { "User-Agent": UA },
-  });
-  if (!res.ok) throw new Error(`status ${res.status}`);
-
-  const html = await res.text();
-  const $ = cheerio.load(html);
-  const title = $("title").text().trim();
-  const bodyText = $("body").text().replace(/\s+/g, " ").trim().slice(0, 2000);
-  return `Page title: ${title}\nPage text: ${bodyText}`;
-}
-
-async function isRelevantLink(snippet, event) {
-  const result = await askForJson(
-    "You verify whether a webpage actually describes a specific event, rather than being a generic homepage, category listing, or unrelated page.",
-    `Event: "${event.title}"${event.venueName ? ` at ${event.venueName}` : ""} on ${event.startDate.toISOString().slice(0, 10)}
-
-Webpage content:
-${snippet}
-
-Does this webpage specifically describe this event (not just the venue in general, or a generic listings/homepage)? Return JSON: {"relevant": true} or {"relevant": false}.`
-  );
-  return Boolean(result?.relevant);
-}
-
 async function isValidEventUrl(event) {
-  let snippet;
   try {
-    snippet = await fetchPageSnippet(event.eventUrl);
+    const res = await fetch(event.eventUrl, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT),
+      headers: { "User-Agent": UA },
+    });
+    return res.status !== 404 && res.status !== 410;
   } catch {
-    return false; // unreachable / non-2xx — bad link
-  }
-
-  try {
-    return await isRelevantLink(snippet, event);
-  } catch {
-    return true; // Ollama hiccup — don't penalize the link for that
+    return false;
   }
 }
 
@@ -99,10 +85,6 @@ async function isValidEventUrl(event) {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  // Data hygiene: scraped empty strings should be null, same as never set
-  await db.update(events).set({ eventUrl: null }).where(eq(events.eventUrl, ""));
-  await db.update(events).set({ imageUrl: null }).where(eq(events.imageUrl, ""));
-
   const activeCities = await db.query.cities.findMany({ where: eq(cities.active, true) });
   const cityIds = activeCities.map((c) => c.id);
 
@@ -117,27 +99,25 @@ async function main() {
     ),
   });
 
-  console.log(`[validate-events] Checking ${candidates.length} events`);
+  console.log(`[validate-events] Checking ${candidates.length} events (DRY RUN — no writes)`);
 
-  let urlsCleared = 0;
-  let imagesCleared = 0;
+  let urlFlags = 0;
+  let imageFlags = 0;
 
   for (const event of candidates) {
     if (event.eventUrl) {
       const ok = await isValidEventUrl(event);
       if (!ok) {
-        await db.update(events).set({ eventUrl: null }).where(eq(events.id, event.id));
-        urlsCleared++;
-        console.log(`[validate-events]   cleared bad eventUrl for "${event.title}" (id ${event.id})`);
+        urlFlags++;
+        console.log(`[validate-events]   would clear eventUrl for "${event.title}" (id ${event.id}): ${event.eventUrl}`);
       }
     }
 
     if (event.imageUrl) {
       const ok = await isValidImageUrl(event.imageUrl);
       if (!ok) {
-        await db.update(events).set({ imageUrl: null }).where(eq(events.id, event.id));
-        imagesCleared++;
-        console.log(`[validate-events]   cleared bad imageUrl for "${event.title}" (id ${event.id})`);
+        imageFlags++;
+        console.log(`[validate-events]   would clear imageUrl for "${event.title}" (id ${event.id}): ${event.imageUrl}`);
       }
     }
 
@@ -145,7 +125,7 @@ async function main() {
   }
 
   console.log(
-    `[validate-events] Done. Cleared ${urlsCleared} event link(s), ${imagesCleared} image(s).`
+    `[validate-events] Done. Would have cleared ${urlFlags} event link(s), ${imageFlags} image(s). No writes made.`
   );
 }
 
