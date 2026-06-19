@@ -1,16 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/discover-sources",
-      "schedule": "0 9 * * 1"
-    },
-    {
-      "path": "/api/cron/scrape-events",
-      "schedule": "0 4 * * 2"
-    },
-    {
-      "path": "/api/cron/major-events",
-      "schedule": "0 5 1 * *"
-    }
-  ]
-}
+{}
