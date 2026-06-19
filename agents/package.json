@@ -7,7 +7,8 @@
     "discover-sources": "node discover-sources.js",
     "scrape-events": "node scrape-events.js",
     "major-events": "node major-events.js",
-    "dedup-events": "node dedup-events.js"
+    "dedup-events": "node dedup-events.js",
+    "validate-events": "node validate-events.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.9.0",

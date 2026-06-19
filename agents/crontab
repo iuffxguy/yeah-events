@@ -5,6 +5,7 @@
 # Agent 2 — Scrape Events:     Every 2 days at 3am  (runs after Agent 1 adds new sources)
 # Agent 3 — Major Events:      1st of month at 2am
 # Agent 4 — Dedup Events:      Every 2 days at 4am  (runs after Agent 2 finishes)
+# Agent 5 — Validate Events:   Every 2 days at 5am  (runs after Agent 4 finishes)
 #
 # Note: day-of-month */2 resets at the start of each month, so there can
 # occasionally be two runs on consecutive days across a month boundary.
@@ -16,4 +17,5 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 0    1   */2    *    *    cd /app && node discover-sources.js >> /var/log/yeah-discover.log 2>&1
 0    3   */2    *    *    cd /app && node scrape-events.js >> /var/log/yeah-scrape.log 2>&1
 0    4   */2    *    *    cd /app && node dedup-events.js >> /var/log/yeah-dedup.log 2>&1
+0    5   */2    *    *    cd /app && node validate-events.js >> /var/log/yeah-validate.log 2>&1
 0    2   1      *    *    cd /app && node major-events.js >> /var/log/yeah-major.log 2>&1
