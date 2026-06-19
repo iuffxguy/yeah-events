@@ -18,10 +18,15 @@
  * Run manually: node dedup-events.js
  */
 
-import { db, cities, events, eventMentions, mentionCountToConfidence } from "./db.js";
+import { db, cities, events, eventMentions, mentionCountToConfidence, normalizeTitle } from "./db.js";
 import { askForJson } from "./ollama.js";
 import { eq, and, gte, lte, asc, inArray } from "drizzle-orm";
 import { addDays, startOfDay } from "date-fns";
+
+// Max candidates sent to Ollama in a single prompt. Big event days (e.g.
+// holidays) can have 50+ events — cramming them all into one prompt makes
+// the model miss duplicates buried in the list, so we chunk instead.
+const OLLAMA_CHUNK_SIZE = 20;
 
 // ---------------------------------------------------------------------------
 // Ollama duplicate detection
@@ -50,7 +55,7 @@ async function mergeGroup(ids) {
   const full = await db.query.events.findMany({
     where: inArray(events.id, ids),
   });
-  if (full.length < 2) return;
+  if (full.length < 2) return full[0] ?? null;
 
   // Canonical = most-mentioned, tie-broken by oldest (lowest id)
   full.sort((a, b) => b.mentionCount - a.mentionCount || a.id - b.id);
@@ -99,6 +104,50 @@ async function mergeGroup(ids) {
   console.log(
     `[dedup-events]   merged ${losers.length} duplicate(s) into "${canonical.title}" (id ${canonical.id})`
   );
+
+  return { ...canonical, ...merged, mentionCount };
+}
+
+// ---------------------------------------------------------------------------
+// Exact-title pre-pass — catches byte/normalized-identical duplicates
+// (e.g. from overlapping scrape runs racing past the upsert dedup check)
+// without needing an Ollama call at all.
+// ---------------------------------------------------------------------------
+
+async function exactDedup(dayEvents) {
+  const byNormalizedTitle = new Map();
+  for (const e of dayEvents) {
+    const key = normalizeTitle(e.title);
+    if (!byNormalizedTitle.has(key)) byNormalizedTitle.set(key, []);
+    byNormalizedTitle.get(key).push(e);
+  }
+
+  const survivors = [];
+  let merged = 0;
+
+  for (const group of byNormalizedTitle.values()) {
+    if (group.length < 2) {
+      survivors.push(group[0]);
+      continue;
+    }
+    const ids = group.map((e) => e.id);
+    try {
+      const canonical = await mergeGroup(ids);
+      survivors.push(canonical ?? group[0]);
+      merged += ids.length - 1;
+    } catch (err) {
+      console.error(`[dedup-events]   exact-merge error:`, err.message);
+      survivors.push(group[0]);
+    }
+  }
+
+  return { survivors, merged };
+}
+
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,30 +183,42 @@ async function main() {
     for (const [day, dayEvents] of byDay) {
       if (dayEvents.length < 2) continue;
 
-      const candidates = dayEvents.map((e) => ({
-        id: e.id,
-        title: e.title,
-        venueName: e.venueName,
-      }));
+      // Pass 1: merge exact/normalized-identical titles with plain code
+      const { survivors, merged: exactMerged } = await exactDedup(dayEvents);
+      totalMerged += exactMerged;
 
-      let groups;
-      try {
-        groups = await findDuplicateGroups(candidates);
-      } catch (err) {
-        console.error(`[dedup-events] Ollama error for ${city.name} ${day}:`, err.message);
-        continue;
-      }
+      if (survivors.length < 2) continue;
 
-      for (const group of groups) {
-        if (!Array.isArray(group) || group.length < 2) continue;
-        const ids = group.map((i) => candidates[i]?.id).filter(Boolean);
-        if (ids.length < 2) continue;
+      // Pass 2: ask Ollama to spot near-duplicates among what's left,
+      // chunked so big event days don't overwhelm a single prompt
+      for (const batch of chunk(survivors, OLLAMA_CHUNK_SIZE)) {
+        if (batch.length < 2) continue;
 
+        const candidates = batch.map((e) => ({
+          id: e.id,
+          title: e.title,
+          venueName: e.venueName,
+        }));
+
+        let groups;
         try {
-          await mergeGroup(ids);
-          totalMerged += ids.length - 1;
+          groups = await findDuplicateGroups(candidates);
         } catch (err) {
-          console.error(`[dedup-events]   merge error:`, err.message);
+          console.error(`[dedup-events] Ollama error for ${city.name} ${day}:`, err.message);
+          continue;
+        }
+
+        for (const group of groups) {
+          if (!Array.isArray(group) || group.length < 2) continue;
+          const ids = group.map((i) => candidates[i]?.id).filter(Boolean);
+          if (ids.length < 2) continue;
+
+          try {
+            await mergeGroup(ids);
+            totalMerged += ids.length - 1;
+          } catch (err) {
+            console.error(`[dedup-events]   merge error:`, err.message);
+          }
         }
       }
     }
